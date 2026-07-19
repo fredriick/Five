@@ -1,0 +1,8 @@
+[package]
+name = "five_vm"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+five_core.workspace = true
+thiserror.workspace = true

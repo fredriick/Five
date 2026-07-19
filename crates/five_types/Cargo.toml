@@ -1,0 +1,9 @@
+[package]
+name = "five_types"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+five_core.workspace = true
+five_ast.workspace = true
+thiserror.workspace = true

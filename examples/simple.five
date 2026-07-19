@@ -1,0 +1,117 @@
+// Simple Five examples that demonstrate core features
+
+// Basic arithmetic
+println("=== Arithmetic ===")
+println("1 + 2 = " + string(1 + 2))
+println("10 - 3 = " + string(10 - 3))
+println("4 * 5 = " + string(4 * 5))
+println("20 / 4 = " + string(20 / 4))
+
+// Variables
+println("\n=== Variables ===")
+let x = 42
+let name = "Five"
+println("x = " + string(x))
+println("name = " + name)
+
+// Functions
+println("\n=== Functions ===")
+fn add(a, b) {
+    a + b
+}
+
+fn greet(person) {
+    "Hello, " + person + "!"
+}
+
+println("add(2, 3) = " + string(add(2, 3)))
+println(greet("World"))
+
+// Pipe operator
+println("\n=== Pipe Operator ===")
+fn double(n) { n * 2 }
+fn add_ten(n) { n + 10 }
+
+let result = 5 |> double |> add_ten
+println("5 |> double |> add_ten = " + string(result))
+
+// Lambdas and higher-order functions
+println("\n=== Lambdas ===")
+let square = (x) => x * x
+println("square(4) = " + string(square(4)))
+
+let numbers = [1, 2, 3, 4, 5]
+let doubled = numbers.map((x) => x * 2)
+println("doubled: " + string(doubled))
+
+let evens = numbers.filter((x) => x % 2 == 0)
+println("evens: " + string(evens))
+
+let sum = numbers.fold(0, (acc, x) => acc + x)
+println("sum: " + string(sum))
+
+// Algebraic data types
+println("\n=== Data Types ===")
+data Option<T> {
+    Some(T),
+    None
+}
+
+let found = Some(42)
+let not_found = None
+
+let value = match found {
+    Some(n) => "Found: " + string(n),
+    None => "Not found"
+}
+println(value)
+
+// Pattern matching
+println("\n=== Pattern Matching ===")
+fn describe(n) {
+    match n {
+        0 => "zero",
+        1 => "one",
+        _ => "many"
+    }
+}
+
+println("describe(0) = " + describe(0))
+println("describe(1) = " + describe(1))
+println("describe(5) = " + describe(5))
+
+// If expressions
+println("\n=== If Expressions ===")
+fn abs(n) {
+    if n < 0 {
+        0 - n
+    } else {
+        n
+    }
+}
+
+println("abs(-5) = " + string(abs(-5)))
+println("abs(5) = " + string(abs(5)))
+
+// Recursion
+println("\n=== Recursion ===")
+fn factorial(n) {
+    if n <= 1 {
+        1
+    } else {
+        n * factorial(n - 1)
+    }
+}
+
+fn fib(n) {
+    if n <= 1 {
+        n
+    } else {
+        fib(n - 1) + fib(n - 2)
+    }
+}
+
+println("factorial(5) = " + string(factorial(5)))
+println("fib(10) = " + string(fib(10)))
+
+println("\n=== Done! ===")

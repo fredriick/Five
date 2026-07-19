@@ -1,0 +1,97 @@
+// Ownership System in Five (Rust-inspired)
+
+// Basic ownership - values move by default
+fn demonstrate_ownership() {
+    let text = "Hello, ownership!"
+    println(text)
+
+    // In a full implementation:
+    // let moved = text  // text would be moved here
+    // println(text)     // This would be an error!
+}
+
+// Borrowing - immutable references
+fn calculate_length(s: &String) -> Int {
+    s.len()
+}
+
+fn demonstrate_borrowing() {
+    let original = "Five language"
+    let borrowed = &original  // Immutable borrow
+
+    // Both can be used
+    println("Original: " + original)
+    println("Length: " + string(original.len()))
+}
+
+// Mutable borrowing
+fn append_greeting(s: &mut String) {
+    // In full implementation:
+    // s.push(", hello!")
+    println("Would append to: " + string(s))
+}
+
+fn demonstrate_mutable_borrow() {
+    let mut text = "Five"
+    let mutable_ref = &mut text
+
+    // Only mutable_ref can be used here
+    // text cannot be used while mutable_ref exists
+    println("Mutable borrow: " + string(mutable_ref))
+}
+
+// Function that takes ownership
+fn take_ownership(s: String) {
+    println("I own: " + s)
+    // s is dropped here
+}
+
+// Function that borrows
+fn borrow_value(s: &String) {
+    println("I borrowed: " + string(s))
+}
+
+// Function that returns ownership
+fn give_ownership() -> String {
+    let s = "new string"
+    s  // Returned, ownership transferred to caller
+}
+
+// Pattern: Take and return ownership for modification
+fn modify_and_return(s: String) -> String {
+    // Would modify s
+    s + " (modified)"
+}
+
+// Main demonstration
+fn main() {
+    println("=== Ownership Demonstration ===")
+
+    demonstrate_ownership()
+    demonstrate_borrowing()
+    demonstrate_mutable_borrow()
+
+    // Ownership transfer
+    let my_string = "my data"
+    take_ownership(my_string)
+    // my_string can't be used here in full implementation
+
+    // Borrowing preserves ownership
+    let another = "another string"
+    borrow_value(&another)
+    // another can still be used
+    println("Still have: " + another)
+
+    // Getting ownership from function
+    let received = give_ownership()
+    println("Received: " + received)
+
+    // Modify and return pattern
+    let original = "original"
+    let modified = modify_and_return(original)
+    println("Modified: " + modified)
+
+    println("=== Ownership Demo Complete ===")
+}
+
+main()

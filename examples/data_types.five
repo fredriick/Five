@@ -1,0 +1,76 @@
+// Algebraic Data Types in Five
+
+// Option type - for nullable values
+data Option<T> {
+    Some(T),
+    None
+}
+
+// Result type - for error handling
+data Result<T, E> {
+    Ok(T),
+    Err(E)
+}
+
+// Using Option
+fn find_by_id(id) {
+    if id == 1 {
+        Some(42)
+    } else {
+        None
+    }
+}
+
+let found = find_by_id(1)
+let result = match found {
+    Some(value) => "Found: " + string(value),
+    None => "Not found"
+}
+println(result)
+
+let not_found = find_by_id(99)
+let result2 = match not_found {
+    Some(value) => "Found: " + string(value),
+    None => "Not found"
+}
+println(result2)
+
+// Pattern matching with guards
+fn classify(n) {
+    match n {
+        0 => "zero",
+        n if n < 0 => "negative",
+        n if n > 0 => "positive",
+        _ => "unknown"
+    }
+}
+
+println(classify(-5))
+println(classify(0))
+println(classify(10))
+
+// Custom data types
+data Shape {
+    Circle(Float),
+    Rectangle(Float, Float),
+    Triangle(Float, Float, Float)
+}
+
+fn area(shape) {
+    match shape {
+        Circle(r) => 3.14159 * r * r,
+        Rectangle(w, h) => w * h,
+        Triangle(a, b, c) => {
+            // Heron's formula
+            let s = (a + b + c) / 2.0
+            // sqrt not implemented yet, just return approximation
+            s * (s - a) * (s - b) * (s - c)
+        }
+    }
+}
+
+let circle = Circle(5.0)
+let rect = Rectangle(3.0, 4.0)
+
+println("Circle area: " + string(area(circle)))
+println("Rectangle area: " + string(area(rect)))

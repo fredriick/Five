@@ -1,0 +1,102 @@
+// Functional Programming in Five
+
+// Higher-order functions
+fn apply_twice(f, x) {
+    f(f(x))
+}
+
+fn double(x) { x * 2 }
+fn square(x) { x * x }
+
+println("double twice on 3: " + string(apply_twice(double, 3)))
+println("square twice on 2: " + string(apply_twice(square, 2)))
+
+// Function composition
+fn compose(f, g) {
+    (x) => f(g(x))
+}
+
+let double_then_square = compose(square, double)
+let square_then_double = compose(double, square)
+
+println("double then square of 3: " + string(double_then_square(3)))
+println("square then double of 3: " + string(square_then_double(3)))
+
+// Pipe operator for readable composition
+let result = 5
+    |> double
+    |> square
+    |> double
+println("5 |> double |> square |> double = " + string(result))
+
+// Currying (partial application style)
+fn add(a) {
+    (b) => a + b
+}
+
+let add5 = add(5)
+let add10 = add(10)
+
+println("add5(3) = " + string(add5(3)))
+println("add10(7) = " + string(add10(7)))
+
+// Map, filter, reduce on arrays
+let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+let doubled = numbers.map((x) => x * 2)
+println("doubled: " + string(doubled))
+
+let evens = numbers.filter((x) => x % 2 == 0)
+println("evens: " + string(evens))
+
+let sum = numbers.fold(0, (acc, x) => acc + x)
+println("sum: " + string(sum))
+
+let product = numbers.fold(1, (acc, x) => acc * x)
+println("product: " + string(product))
+
+// Chaining operations with pipe
+let result2 = numbers
+    |> ((arr) => arr.filter((x) => x % 2 == 0))
+    |> ((arr) => arr.map((x) => x * x))
+    |> ((arr) => arr.fold(0, (acc, x) => acc + x))
+
+println("sum of squares of evens: " + string(result2))
+
+// Recursion
+fn fibonacci(n) {
+    if n <= 1 {
+        n
+    } else {
+        fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+println("fibonacci(10) = " + string(fibonacci(10)))
+
+// Tail recursion (optimizable)
+fn factorial_tail(n, acc) {
+    if n <= 1 {
+        acc
+    } else {
+        factorial_tail(n - 1, n * acc)
+    }
+}
+
+fn factorial(n) {
+    factorial_tail(n, 1)
+}
+
+println("factorial(10) = " + string(factorial(10)))
+
+// Building input_data pipelines
+fn process_input_data(input_data) {
+    input_data
+        |> ((d) => d.filter((x) => x > 0))
+        |> ((d) => d.map((x) => x * 2))
+        |> ((d) => d.filter((x) => x < 100))
+}
+
+let raw_input_data = [-5, 10, -3, 25, 50, 100, 30, -10, 40]
+let processed = process_input_data(raw_input_data)
+println("processed: " + string(processed))

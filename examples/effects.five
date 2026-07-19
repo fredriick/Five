@@ -1,0 +1,71 @@
+// Effect Tracking in Five
+
+// Pure functions - no effects
+fn add(a, b) {
+    a + b
+}
+
+fn multiply(a, b) {
+    a * b
+}
+
+fn factorial(n) {
+    if n <= 1 {
+        1
+    } else {
+        n * factorial(n - 1)
+    }
+}
+
+// Functions with IO effect
+fn greet_user(name) with IO {
+    println("Hello, " + name + "!")
+    println("Welcome to Five!")
+}
+
+fn get_input(prompt) with IO {
+    print(prompt)
+    input()
+}
+
+// Functions with State effect (mutation)
+fn increment_counter(counter) with State {
+    counter + 1
+}
+
+// Async functions (with Async effect)
+async fn fetch_data(url) with IO, Async {
+    // Simulated async operation
+    println("Fetching data from: " + url)
+    "{ data: 42 }"
+}
+
+// Effect propagation
+fn process_file(path) with IO {
+    println("Processing: " + path)
+    let content = "file contents"
+    let processed = content.len()
+    println("Processed " + string(processed) + " characters")
+    processed
+}
+
+// Main program
+fn main() with IO {
+    // Pure operations
+    let sum = add(5, 3)
+    let product = multiply(4, 7)
+    let fact5 = factorial(5)
+
+    println("5 + 3 = " + string(sum))
+    println("4 * 7 = " + string(product))
+    println("5! = " + string(fact5))
+
+    // IO operations
+    greet_user("Five User")
+
+    // Note: Effect system ensures IO operations are tracked
+    process_file("example.txt")
+}
+
+// Run main
+main()

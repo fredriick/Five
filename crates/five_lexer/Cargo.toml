@@ -1,0 +1,9 @@
+[package]
+name = "five_lexer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+five_core.workspace = true
+logos.workspace = true
+thiserror.workspace = true

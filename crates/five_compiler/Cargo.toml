@@ -1,0 +1,13 @@
+[package]
+name = "five_compiler"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+five_core.workspace = true
+five_ast.workspace = true
+five_vm.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+five_parser.workspace = true

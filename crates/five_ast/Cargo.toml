@@ -1,0 +1,8 @@
+[package]
+name = "five_ast"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+five_core.workspace = true
+serde.workspace = true

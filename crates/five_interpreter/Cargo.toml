@@ -1,0 +1,11 @@
+[package]
+name = "five_interpreter"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+five_core.workspace = true
+five_ast.workspace = true
+five_lexer.workspace = true
+five_parser.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,61 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Five Language Team"]
+license = "MIT"
+
+[workspace.dependencies]
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Lexer
+logos = "0.14"
+
+# Beautiful error reporting
+ariadne = "0.4"
+
+# REPL line editing
+rustyline = "14.0"
+
+# CLI
+clap = { version = "4.0", features = ["derive"] }
+
+# Serialization (for AI-native AST export)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Internal crates
+five_core = { path = "crates/five_core" }
+five_ast = { path = "crates/five_ast" }
+five_lexer = { path = "crates/five_lexer" }
+five_parser = { path = "crates/five_parser" }
+five_interpreter = { path = "crates/five_interpreter" }
+five_types = { path = "crates/five_types" }
+five_effects = { path = "crates/five_effects" }
+five_vm = { path = "crates/five_vm" }
+five_compiler = { path = "crates/five_compiler" }
+
+[package]
+name = "five"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+five_core.workspace = true
+five_ast.workspace = true
+five_lexer.workspace = true
+five_parser.workspace = true
+five_interpreter.workspace = true
+five_types.workspace = true
+five_effects.workspace = true
+five_vm.workspace = true
+five_compiler.workspace = true
+clap.workspace = true
+rustyline.workspace = true
+ariadne.workspace = true
+anyhow.workspace = true
