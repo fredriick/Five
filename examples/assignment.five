@@ -1,0 +1,21 @@
+// Test assignment expressions
+
+let x = 5
+println(x)
+
+x = 10
+println(x)
+
+// Compound assignment
+x += 5
+println(x)
+
+x *= 2
+println(x)
+
+// Chained assignment
+let a = 1
+let b = 2
+a = b = 3
+println(a)
+println(b)

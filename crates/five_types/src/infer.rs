@@ -237,7 +237,7 @@ impl TypeChecker {
             }
 
             StmtKind::For { binding, iter, body } => {
-                let iter_type = self.infer_expr(iter)?;
+                let _iter_type = self.infer_expr(iter)?;
                 // Infer element type from iterator
                 let elem_type = self.fresh_type();
 
@@ -469,13 +469,13 @@ impl TypeChecker {
                 Ok(InferType::Tuple(types))
             }
 
-            ExprKind::Field { object, field } => {
+            ExprKind::Field { object, field: _ } => {
                 let _obj_type = self.infer_expr(object)?;
                 // TODO: look up field type in struct definition
                 Ok(self.fresh_type())
             }
 
-            ExprKind::MethodCall { object, method, args } => {
+            ExprKind::MethodCall { object, method: _, args: _ } => {
                 let _obj_type = self.infer_expr(object)?;
                 // TODO: look up method type
                 Ok(self.fresh_type())
@@ -537,6 +537,20 @@ impl TypeChecker {
                 }
                 Ok(InferType::Concrete(name.clone()))
             }
+
+            ExprKind::Assign { target, value } => {
+                let target_type = self.infer_expr(target)?;
+                let value_type = self.infer_expr(value)?;
+                self.unify(&target_type, &value_type, expr.span)?;
+                Ok(value_type)
+            }
+
+            ExprKind::CompoundAssign { target, op: _, value } => {
+                let target_type = self.infer_expr(target)?;
+                let value_type = self.infer_expr(value)?;
+                self.unify(&target_type, &value_type, expr.span)?;
+                Ok(target_type)
+            }
         }
     }
 
@@ -558,7 +572,7 @@ impl TypeChecker {
             PatternKind::Wildcard => Ok(self.fresh_type()),
             PatternKind::Identifier(_) => Ok(self.fresh_type()),
             PatternKind::Literal(lit) => Ok(self.infer_literal(lit)),
-            PatternKind::Constructor { name, args } => {
+            PatternKind::Constructor { name, args: _ } => {
                 // Look up constructor type
                 if let Some(ty) = self.env.get(name) {
                     // TODO: unify with args
@@ -579,7 +593,7 @@ impl TypeChecker {
 
     /// Unify two types.
     fn unify(&mut self, expected: &InferType, actual: &InferType, span: Span) -> FiveResult<()> {
-        let mut unifier = Unifier::new(&self.substitutions);
+        let unifier = Unifier::new(&self.substitutions);
         match unifier.unify(expected, actual) {
             Ok(new_subs) => {
                 for (var, ty) in new_subs {

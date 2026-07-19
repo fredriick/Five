@@ -3,7 +3,6 @@
 use five_ast::*;
 use five_core::{FiveError, FiveResult};
 use five_vm::{Chunk, Instruction, OpCode, VMValue};
-use std::collections::HashMap;
 
 /// Local variable information.
 #[derive(Debug, Clone)]
@@ -476,6 +475,71 @@ impl Compiler {
 
                 // Pop the scrutinee
                 self.emit(OpCode::Pop, None);
+            }
+
+            ExprKind::Assign { target, value } => {
+                self.compile_expr(value)?;
+
+                match &target.kind {
+                    ExprKind::Identifier(name) => {
+                        if let Some(slot) = self.resolve_local(name) {
+                            self.emit(OpCode::SetLocal, Some(slot as u32));
+                        } else {
+                            let idx = self.chunk.add_constant(VMValue::String(name.clone()));
+                            self.emit(OpCode::SetGlobal, Some(idx as u32));
+                        }
+                    }
+                    _ => {
+                        return Err(FiveError::runtime(
+                            "Complex assignment targets not yet supported in compiler",
+                            target.span,
+                        ));
+                    }
+                }
+            }
+
+            ExprKind::CompoundAssign { target, op, value } => {
+                // Load current value
+                match &target.kind {
+                    ExprKind::Identifier(name) => {
+                        if let Some(slot) = self.resolve_local(name) {
+                            self.emit(OpCode::GetLocal, Some(slot as u32));
+                        } else {
+                            let idx = self.chunk.add_constant(VMValue::String(name.clone()));
+                            self.emit(OpCode::GetGlobal, Some(idx as u32));
+                        }
+                    }
+                    _ => {
+                        return Err(FiveError::runtime(
+                            "Complex assignment targets not yet supported in compiler",
+                            target.span,
+                        ));
+                    }
+                }
+
+                // Compile the value and apply the operation
+                self.compile_expr(value)?;
+
+                match op {
+                    BinaryOp::Add => self.emit(OpCode::Add, None),
+                    BinaryOp::Sub => self.emit(OpCode::Subtract, None),
+                    BinaryOp::Mul => self.emit(OpCode::Multiply, None),
+                    BinaryOp::Div => self.emit(OpCode::Divide, None),
+                    _ => {}
+                }
+
+                // Store back
+                match &target.kind {
+                    ExprKind::Identifier(name) => {
+                        if let Some(slot) = self.resolve_local(name) {
+                            self.emit(OpCode::SetLocal, Some(slot as u32));
+                        } else {
+                            let idx = self.chunk.add_constant(VMValue::String(name.clone()));
+                            self.emit(OpCode::SetGlobal, Some(idx as u32));
+                        }
+                    }
+                    _ => {}
+                }
             }
 
             // TODO: implement remaining expression types

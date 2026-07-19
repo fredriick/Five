@@ -1,0 +1,24 @@
+// Test array index assignment
+let arr = [1, 2, 3, 4, 5]
+println(arr)
+
+arr[0] = 10
+println(arr)
+
+arr[2] = arr[2] * 2
+println(arr)
+
+// Test struct field assignment
+struct Point {
+    x: Int,
+    y: Int
+}
+
+let p = Point { x: 1, y: 2 }
+println(p.x)
+println(p.y)
+
+p.x = 10
+p.y = 20
+println(p.x)
+println(p.y)

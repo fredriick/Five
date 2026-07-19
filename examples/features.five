@@ -1,0 +1,77 @@
+// Comprehensive Five Language Features Demo
+
+println("=== Mutable Variables ===")
+let mut counter = 0
+println(counter)
+counter = 10
+println(counter)
+counter += 5
+println(counter)
+
+println("\n=== Arrays ===")
+let arr = [1, 2, 3, 4, 5]
+println(arr)
+arr[0] = 100
+println(arr)
+
+println("\n=== Array Methods ===")
+let doubled = arr.map((x) => x * 2)
+println(doubled)
+
+let evens = arr.filter((x) => x % 2 == 0)
+println(evens)
+
+let sum = arr.fold(0, (acc, x) => acc + x)
+println(sum)
+
+println("\n=== Struct Literals ===")
+struct Point {
+    x: Int,
+    y: Int
+}
+
+let p = Point { x: 10, y: 20 }
+println(p.x)
+println(p.y)
+
+p.x = 100
+p.y = 200
+println(p.x)
+println(p.y)
+
+println("\n=== Algebraic Data Types ===")
+data Option<T> {
+    Some(T),
+    None
+}
+
+let value = Some(42)
+match value {
+    Some(n) => println(n),
+    None => println("nothing")
+}
+
+println("\n=== For Loops ===")
+let mut total = 0
+for i in 1..=5 {
+    total += i
+}
+println(total)
+
+println("\n=== Pipe Operator ===")
+fn add_one(x) { x + 1 }
+fn double(x) { x * 2 }
+fn square(x) { x * x }
+
+let result = 5 |> add_one |> double |> square
+println(result)
+
+println("\n=== Higher-Order Functions ===")
+fn apply_twice(f, x) {
+    f(f(x))
+}
+
+let result2 = apply_twice((x) => x + 1, 10)
+println(result2)
+
+println("\n=== Done! ===")

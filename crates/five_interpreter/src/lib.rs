@@ -59,9 +59,9 @@ impl Interpreter {
     /// Evaluate a statement.
     pub fn eval_stmt(&mut self, stmt: &Stmt) -> FiveResult<Value> {
         match &stmt.kind {
-            StmtKind::Let { name, value, .. } => {
+            StmtKind::Let { name, value, mutable, .. } => {
                 let val = self.eval_expr(value)?;
-                self.env.borrow_mut().define(name.clone(), val);
+                self.env.borrow_mut().define_mut(name.clone(), val, *mutable);
                 Ok(Value::Nil)
             }
 
@@ -430,6 +430,141 @@ impl Interpreter {
                     fields: field_values,
                 })
             }
+
+            ExprKind::Assign { target, value } => {
+                let val = self.eval_expr(value)?;
+                self.assign_to_target(target, val.clone(), expr.span)?;
+                Ok(val)
+            }
+
+            ExprKind::CompoundAssign { target, op, value } => {
+                let current = self.eval_expr(target)?;
+                let rhs = self.eval_expr(value)?;
+                let new_val = self.eval_binary_values(&current, *op, &rhs, expr.span)?;
+                self.assign_to_target(target, new_val.clone(), expr.span)?;
+                Ok(new_val)
+            }
+        }
+    }
+
+    /// Assign a value to an assignment target.
+    fn assign_to_target(&mut self, target: &Expr, value: Value, span: Span) -> FiveResult<()> {
+        match &target.kind {
+            ExprKind::Identifier(name) => {
+                match self.env.borrow_mut().set(name, value) {
+                    Ok(true) => Ok(()),
+                    Ok(false) => Err(FiveError::runtime(
+                        format!("Cannot assign to undefined variable: {}", name),
+                        span,
+                    )),
+                    Err(msg) => Err(FiveError::runtime(
+                        format!("{}: {}", msg, name),
+                        span,
+                    )),
+                }
+            }
+            ExprKind::Index { object, index } => {
+                let idx = self.eval_expr(index)?;
+                self.assign_to_index(object, idx, value, span)
+            }
+            ExprKind::Field { object, field } => {
+                self.assign_to_field(object, field, value, span)
+            }
+            _ => Err(FiveError::runtime("Invalid assignment target", span)),
+        }
+    }
+
+    /// Assign to an array index.
+    fn assign_to_index(&mut self, object: &Expr, index: Value, value: Value, span: Span) -> FiveResult<()> {
+        // Get the variable name being indexed
+        if let ExprKind::Identifier(name) = &object.kind {
+            let obj = self.env.borrow().get(name).ok_or_else(|| {
+                FiveError::runtime(format!("Undefined variable: {}", name), span)
+            })?;
+
+            match (obj, &index) {
+                (Value::Array(mut arr), Value::Int(i)) => {
+                    let i = *i as usize;
+                    if i >= arr.len() {
+                        return Err(FiveError::runtime(
+                            format!("Index {} out of bounds for array of length {}", i, arr.len()),
+                            span,
+                        ));
+                    }
+                    arr[i] = value;
+                    // Use set_unchecked for array mutation (arrays are mutable by reference)
+                    self.env.borrow_mut().set_unchecked(name, Value::Array(arr));
+                    Ok(())
+                }
+                _ => Err(FiveError::runtime(
+                    "Cannot index-assign to non-array or with non-integer index",
+                    span,
+                )),
+            }
+        } else {
+            Err(FiveError::runtime(
+                "Cannot index-assign to complex expression",
+                span,
+            ))
+        }
+    }
+
+    /// Assign to a struct field.
+    fn assign_to_field(&mut self, object: &Expr, field: &str, value: Value, span: Span) -> FiveResult<()> {
+        // Get the variable name being field-accessed
+        if let ExprKind::Identifier(name) = &object.kind {
+            let obj = self.env.borrow().get(name).ok_or_else(|| {
+                FiveError::runtime(format!("Undefined variable: {}", name), span)
+            })?;
+
+            match obj {
+                Value::Struct { name: struct_name, mut fields } => {
+                    if !fields.contains_key(field) {
+                        return Err(FiveError::runtime(
+                            format!("No field '{}' on struct '{}'", field, struct_name),
+                            span,
+                        ));
+                    }
+                    fields.insert(field.to_string(), value);
+                    // Use set_unchecked for struct field mutation
+                    self.env.borrow_mut().set_unchecked(name, Value::Struct { name: struct_name, fields });
+                    Ok(())
+                }
+                _ => Err(FiveError::runtime(
+                    "Cannot field-assign to non-struct",
+                    span,
+                )),
+            }
+        } else {
+            Err(FiveError::runtime(
+                "Cannot field-assign to complex expression",
+                span,
+            ))
+        }
+    }
+
+    /// Evaluate a binary operation on values directly.
+    fn eval_binary_values(&self, left: &Value, op: BinaryOp, right: &Value, span: Span) -> FiveResult<Value> {
+        match (op, left, right) {
+            (BinaryOp::Add, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a + b)),
+            (BinaryOp::Add, Value::Float(a), Value::Float(b)) => Ok(Value::Float(a + b)),
+            (BinaryOp::Add, Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
+            (BinaryOp::Sub, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a - b)),
+            (BinaryOp::Sub, Value::Float(a), Value::Float(b)) => Ok(Value::Float(a - b)),
+            (BinaryOp::Mul, Value::Int(a), Value::Int(b)) => Ok(Value::Int(a * b)),
+            (BinaryOp::Mul, Value::Float(a), Value::Float(b)) => Ok(Value::Float(a * b)),
+            (BinaryOp::Div, Value::Int(a), Value::Int(b)) => {
+                if *b == 0 {
+                    Err(FiveError::runtime("Division by zero", span))
+                } else {
+                    Ok(Value::Int(a / b))
+                }
+            }
+            (BinaryOp::Div, Value::Float(a), Value::Float(b)) => Ok(Value::Float(a / b)),
+            _ => Err(FiveError::runtime(
+                format!("Invalid operands for {:?}", op),
+                span,
+            )),
         }
     }
 

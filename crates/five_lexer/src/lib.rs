@@ -12,6 +12,8 @@ pub struct Lexer<'src> {
     source: &'src str,
     inner: logos::Lexer<'src, TokenKind>,
     peeked: Option<Token>,
+    peeked2: Option<Token>,
+    peeked3: Option<Token>,
 }
 
 impl<'src> Lexer<'src> {
@@ -21,6 +23,8 @@ impl<'src> Lexer<'src> {
             source,
             inner: TokenKind::lexer(source),
             peeked: None,
+            peeked2: None,
+            peeked3: None,
         }
     }
 
@@ -32,16 +36,48 @@ impl<'src> Lexer<'src> {
     /// Peek at the next token without consuming it.
     pub fn peek(&mut self) -> FiveResult<&Token> {
         if self.peeked.is_none() {
-            self.peeked = Some(self.next_token()?);
+            self.peeked = Some(self.read_next_token()?);
         }
         Ok(self.peeked.as_ref().unwrap())
+    }
+
+    /// Peek at the second token ahead without consuming.
+    pub fn peek_second(&mut self) -> FiveResult<&Token> {
+        // Ensure first token is peeked
+        if self.peeked.is_none() {
+            self.peeked = Some(self.read_next_token()?);
+        }
+        // Ensure second token is peeked
+        if self.peeked2.is_none() {
+            self.peeked2 = Some(self.read_next_token()?);
+        }
+        Ok(self.peeked2.as_ref().unwrap())
+    }
+
+    /// Peek at the third token ahead without consuming.
+    pub fn peek_third(&mut self) -> FiveResult<&Token> {
+        // Ensure first two tokens are peeked
+        self.peek_second()?;
+        // Ensure third token is peeked
+        if self.peeked3.is_none() {
+            self.peeked3 = Some(self.read_next_token()?);
+        }
+        Ok(self.peeked3.as_ref().unwrap())
     }
 
     /// Get the next token.
     pub fn next_token(&mut self) -> FiveResult<Token> {
         if let Some(token) = self.peeked.take() {
+            // Shift peeked2 to peeked, peeked3 to peeked2
+            self.peeked = self.peeked2.take();
+            self.peeked2 = self.peeked3.take();
             return Ok(token);
         }
+        self.read_next_token()
+    }
+
+    /// Read the next token from the underlying lexer.
+    fn read_next_token(&mut self) -> FiveResult<Token> {
 
         loop {
             match self.inner.next() {

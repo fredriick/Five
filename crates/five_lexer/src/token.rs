@@ -108,6 +108,14 @@ pub enum TokenKind {
     FatArrow,
     #[token("=")]
     Eq,
+    #[token("+=")]
+    PlusEq,
+    #[token("-=")]
+    MinusEq,
+    #[token("*=")]
+    StarEq,
+    #[token("/=")]
+    SlashEq,
     #[token("&")]
     Ampersand,
     #[token("..")]
@@ -273,6 +281,10 @@ impl TokenKind {
             Self::Arrow => "->",
             Self::FatArrow => "=>",
             Self::Eq => "=",
+            Self::PlusEq => "+=",
+            Self::MinusEq => "-=",
+            Self::StarEq => "*=",
+            Self::SlashEq => "/=",
             Self::Ampersand => "&",
             Self::DotDot => "..",
             Self::DotDotEq => "..=",

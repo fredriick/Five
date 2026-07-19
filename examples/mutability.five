@@ -1,0 +1,16 @@
+// Test mutable variables
+
+// Mutable variable - should work
+let mut x = 5
+println(x)
+x = 10
+println(x)
+x += 5
+println(x)
+
+// Test in loops
+let mut sum = 0
+for i in 1..5 {
+    sum += i
+}
+println(sum)

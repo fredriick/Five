@@ -261,6 +261,20 @@ impl EffectChecker {
                 }
                 Ok(effects)
             }
+
+            ExprKind::Assign { target, value } => {
+                let mut effects = self.infer_expr(target)?;
+                effects.merge(&self.infer_expr(value)?);
+                effects.add(Effect::State); // Assignment has State effect
+                Ok(effects)
+            }
+
+            ExprKind::CompoundAssign { target, value, .. } => {
+                let mut effects = self.infer_expr(target)?;
+                effects.merge(&self.infer_expr(value)?);
+                effects.add(Effect::State);
+                Ok(effects)
+            }
         }
     }
 }

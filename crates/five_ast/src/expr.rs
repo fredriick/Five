@@ -154,4 +154,17 @@ pub enum ExprKind {
         name: String,
         fields: Vec<(String, Expr)>,
     },
+
+    /// Assignment: x = value
+    Assign {
+        target: Box<Expr>,
+        value: Box<Expr>,
+    },
+
+    /// Compound assignment: x += value, x -= value, etc.
+    CompoundAssign {
+        target: Box<Expr>,
+        op: BinaryOp,
+        value: Box<Expr>,
+    },
 }

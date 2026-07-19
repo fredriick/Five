@@ -8,7 +8,77 @@ use five_lexer::TokenKind;
 impl<'src> Parser<'src> {
     /// Parse an expression.
     pub fn parse_expr(&mut self) -> FiveResult<Expr> {
-        self.parse_pipe()
+        self.parse_assignment()
+    }
+
+    /// Parse an assignment expression: x = value, x += value, etc.
+    fn parse_assignment(&mut self) -> FiveResult<Expr> {
+        let expr = self.parse_pipe()?;
+
+        // Check for assignment operators
+        if self.check(TokenKind::Eq)? {
+            // Make sure the left side is assignable
+            if !self.is_valid_assignment_target(&expr) {
+                return Err(FiveError::parser(
+                    "Invalid assignment target",
+                    expr.span,
+                ));
+            }
+
+            self.advance()?;
+            let value = self.parse_assignment()?; // Right-associative
+            let span = expr.span.merge(value.span);
+            return Ok(Expr::new(
+                ExprKind::Assign {
+                    target: Box::new(expr),
+                    value: Box::new(value),
+                },
+                span,
+            ));
+        }
+
+        // Compound assignment operators
+        let compound_op = if self.match_token(TokenKind::PlusEq)?.is_some() {
+            Some(BinaryOp::Add)
+        } else if self.match_token(TokenKind::MinusEq)?.is_some() {
+            Some(BinaryOp::Sub)
+        } else if self.match_token(TokenKind::StarEq)?.is_some() {
+            Some(BinaryOp::Mul)
+        } else if self.match_token(TokenKind::SlashEq)?.is_some() {
+            Some(BinaryOp::Div)
+        } else {
+            None
+        };
+
+        if let Some(op) = compound_op {
+            if !self.is_valid_assignment_target(&expr) {
+                return Err(FiveError::parser(
+                    "Invalid assignment target",
+                    expr.span,
+                ));
+            }
+
+            let value = self.parse_assignment()?;
+            let span = expr.span.merge(value.span);
+            return Ok(Expr::new(
+                ExprKind::CompoundAssign {
+                    target: Box::new(expr),
+                    op,
+                    value: Box::new(value),
+                },
+                span,
+            ));
+        }
+
+        Ok(expr)
+    }
+
+    /// Check if an expression is a valid assignment target.
+    fn is_valid_assignment_target(&self, expr: &Expr) -> bool {
+        matches!(
+            expr.kind,
+            ExprKind::Identifier(_) | ExprKind::Field { .. } | ExprKind::Index { .. }
+        )
     }
 
     /// Parse a pipe expression: expr |> expr |> expr
@@ -478,7 +548,7 @@ impl<'src> Parser<'src> {
         }
 
         // Just a grouped expression
-        let end = self.expect(TokenKind::RParen)?;
+        let _end = self.expect(TokenKind::RParen)?;
 
         // Check if this is a lambda: (x) => body
         if self.match_token(TokenKind::FatArrow)?.is_some() {
@@ -853,15 +923,74 @@ impl<'src> Parser<'src> {
         name: &str,
         start_span: Span,
     ) -> FiveResult<Option<Expr>> {
-        // We need to peek ahead to see if this is Name { field: value }
-        // This is tricky because we're already past the identifier
+        // Check if this looks like a struct literal: Name { identifier: ...
+        // We need to peek 3 tokens: { identifier :
+        if !self.check(TokenKind::LBrace)? {
+            return Ok(None);
+        }
 
-        // For simplicity, let's assume if we see { and then identifier:
-        // it's a struct literal. Otherwise it's just an identifier followed by a block.
+        // Peek at token after opening brace (second token)
+        let peek2 = self.peek_second()?;
 
-        // TODO: implement proper lookahead
-        // For now, don't support struct literals (they look too much like blocks)
-        Ok(None)
+        if peek2.kind == TokenKind::RBrace {
+            // Empty struct: Name { }
+            self.expect(TokenKind::LBrace)?;
+            let end = self.expect(TokenKind::RBrace)?;
+            let span = start_span.merge(end.span);
+            return Ok(Some(Expr::new(
+                ExprKind::Struct { name: name.to_string(), fields: vec![] },
+                span,
+            )));
+        }
+
+        if peek2.kind != TokenKind::Identifier {
+            // Not a struct literal (block or something else)
+            return Ok(None);
+        }
+
+        // Peek at the third token to see if it's a colon
+        let peek3 = self.peek_third()?;
+        if peek3.kind != TokenKind::Colon {
+            // Not a struct literal - it's something like `x { foo(...) }`
+            // which is an identifier followed by a block
+            return Ok(None);
+        }
+
+        // It IS a struct literal: Name { field: value, ... }
+        self.expect(TokenKind::LBrace)?;
+
+        let name = name.to_string();
+        let mut fields = Vec::new();
+
+        while !self.check(TokenKind::RBrace)? && !self.is_at_end()? {
+            let (field_name, _) = self.parse_identifier()?;
+            self.expect(TokenKind::Colon)?;
+            let value = self.parse_expr()?;
+            fields.push((field_name, value));
+
+            // Optional comma
+            if self.match_token(TokenKind::Comma)?.is_none() {
+                break;
+            }
+        }
+
+        let end = self.expect(TokenKind::RBrace)?;
+        let span = start_span.merge(end.span);
+
+        Ok(Some(Expr::new(
+            ExprKind::Struct { name, fields },
+            span,
+        )))
+    }
+
+    /// Peek at the second token ahead (through lexer).
+    fn peek_second(&mut self) -> FiveResult<five_lexer::Token> {
+        Ok(self.lexer.peek_second()?.clone())
+    }
+
+    /// Peek at the third token ahead (through lexer).
+    fn peek_third(&mut self) -> FiveResult<five_lexer::Token> {
+        Ok(self.lexer.peek_third()?.clone())
     }
 
     /// Parse a string literal, handling escape sequences.
@@ -992,7 +1121,7 @@ impl<'src> Parser<'src> {
                         token.span.merge(end.span),
                     ))
                 } else {
-                    let end = self.expect(TokenKind::RParen)?;
+                    let _end = self.expect(TokenKind::RParen)?;
 
                     // Check for function type: (T) -> U
                     if self.match_token(TokenKind::Arrow)?.is_some() {

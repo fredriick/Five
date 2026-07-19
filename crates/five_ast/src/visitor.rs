@@ -187,6 +187,14 @@ pub fn walk_expr<V: Visitor>(visitor: &mut V, expr: &Expr) {
                 visitor.visit_expr(value);
             }
         }
+        ExprKind::Assign { target, value } => {
+            visitor.visit_expr(target);
+            visitor.visit_expr(value);
+        }
+        ExprKind::CompoundAssign { target, value, .. } => {
+            visitor.visit_expr(target);
+            visitor.visit_expr(value);
+        }
     }
 }
 
