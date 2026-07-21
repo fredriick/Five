@@ -865,6 +865,112 @@ impl Interpreter {
                     ));
                 }
             }
+            (Value::String(s), "trim") => {
+                return Ok(Value::String(s.trim().to_string()));
+            }
+            (Value::String(s), "trim_start") => {
+                return Ok(Value::String(s.trim_start().to_string()));
+            }
+            (Value::String(s), "trim_end") => {
+                return Ok(Value::String(s.trim_end().to_string()));
+            }
+            (Value::String(s), "uppercase") => {
+                return Ok(Value::String(s.to_uppercase()));
+            }
+            (Value::String(s), "lowercase") => {
+                return Ok(Value::String(s.to_lowercase()));
+            }
+            (Value::String(s), "contains") if args.len() == 1 => {
+                if let Value::String(sub) = &arg_values[0] {
+                    return Ok(Value::Bool(s.contains(sub.as_str())));
+                }
+            }
+            (Value::String(s), "starts_with") if args.len() == 1 => {
+                if let Value::String(prefix) = &arg_values[0] {
+                    return Ok(Value::Bool(s.starts_with(prefix.as_str())));
+                }
+            }
+            (Value::String(s), "ends_with") if args.len() == 1 => {
+                if let Value::String(suffix) = &arg_values[0] {
+                    return Ok(Value::Bool(s.ends_with(suffix.as_str())));
+                }
+            }
+            (Value::String(s), "replace") if args.len() == 2 => {
+                if let (Value::String(from), Value::String(to)) = (&arg_values[0], &arg_values[1]) {
+                    return Ok(Value::String(s.replace(from.as_str(), to.as_str())));
+                }
+            }
+            (Value::String(s), "substring") if args.len() == 2 => {
+                if let (Value::Int(start), Value::Int(end)) = (&arg_values[0], &arg_values[1]) {
+                    let start = *start as usize;
+                    let end = *end as usize;
+                    if start <= end && end <= s.len() {
+                        return Ok(Value::String(s[start..end].to_string()));
+                    }
+                    return Err(FiveError::runtime("substring indices out of bounds", span));
+                }
+            }
+            (Value::String(s), "repeat") if args.len() == 1 => {
+                if let Value::Int(n) = &arg_values[0] {
+                    return Ok(Value::String(s.repeat(*n as usize)));
+                }
+            }
+            (Value::String(s), "reverse") => {
+                return Ok(Value::String(s.chars().rev().collect()));
+            }
+            (Value::String(s), "is_empty") => {
+                return Ok(Value::Bool(s.is_empty()));
+            }
+            (Value::String(s), "lines") => {
+                return Ok(Value::Array(
+                    s.lines()
+                        .map(|line| Value::String(line.to_string()))
+                        .collect(),
+                ));
+            }
+            (Value::String(s), "join") if args.len() == 1 => {
+                // Used as separator.join(array)
+                if let Value::Array(arr) = &arg_values[0] {
+                    let strings: Vec<String> = arr.iter().map(|v| format!("{}", v)).collect();
+                    return Ok(Value::String(strings.join(s)));
+                }
+            }
+            (Value::Array(arr), "join") if args.len() == 1 => {
+                // Used as array.join(separator)
+                if let Value::String(sep) = &arg_values[0] {
+                    let strings: Vec<String> = arr.iter().map(|v| format!("{}", v)).collect();
+                    return Ok(Value::String(strings.join(sep)));
+                }
+            }
+            (Value::Array(arr), "reverse") => {
+                let mut new_arr = arr.clone();
+                new_arr.reverse();
+                return Ok(Value::Array(new_arr));
+            }
+            (Value::Array(arr), "contains") if args.len() == 1 => {
+                return Ok(Value::Bool(arr.contains(&arg_values[0])));
+            }
+            (Value::Array(arr), "is_empty") => {
+                return Ok(Value::Bool(arr.is_empty()));
+            }
+            (Value::Array(arr), "first") => {
+                return Ok(arr.first().cloned().unwrap_or(Value::Nil));
+            }
+            (Value::Array(arr), "last") => {
+                return Ok(arr.last().cloned().unwrap_or(Value::Nil));
+            }
+            (Value::Array(arr), "take") if args.len() == 1 => {
+                if let Value::Int(n) = &arg_values[0] {
+                    let n = *n as usize;
+                    return Ok(Value::Array(arr.iter().take(n).cloned().collect()));
+                }
+            }
+            (Value::Array(arr), "skip") if args.len() == 1 => {
+                if let Value::Int(n) = &arg_values[0] {
+                    let n = *n as usize;
+                    return Ok(Value::Array(arr.iter().skip(n).cloned().collect()));
+                }
+            }
             _ => {}
         }
 

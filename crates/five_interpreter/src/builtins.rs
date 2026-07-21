@@ -126,6 +126,71 @@ pub fn register_builtins(env: &Rc<RefCell<Environment>>) {
             func: builtin_assert_eq,
         },
     );
+
+    // Math functions
+    env.define(
+        "abs".to_string(),
+        Value::BuiltinFunction {
+            name: "abs".to_string(),
+            func: builtin_abs,
+        },
+    );
+
+    env.define(
+        "min".to_string(),
+        Value::BuiltinFunction {
+            name: "min".to_string(),
+            func: builtin_min,
+        },
+    );
+
+    env.define(
+        "max".to_string(),
+        Value::BuiltinFunction {
+            name: "max".to_string(),
+            func: builtin_max,
+        },
+    );
+
+    env.define(
+        "sqrt".to_string(),
+        Value::BuiltinFunction {
+            name: "sqrt".to_string(),
+            func: builtin_sqrt,
+        },
+    );
+
+    env.define(
+        "pow".to_string(),
+        Value::BuiltinFunction {
+            name: "pow".to_string(),
+            func: builtin_pow,
+        },
+    );
+
+    env.define(
+        "floor".to_string(),
+        Value::BuiltinFunction {
+            name: "floor".to_string(),
+            func: builtin_floor,
+        },
+    );
+
+    env.define(
+        "ceil".to_string(),
+        Value::BuiltinFunction {
+            name: "ceil".to_string(),
+            func: builtin_ceil,
+        },
+    );
+
+    env.define(
+        "round".to_string(),
+        Value::BuiltinFunction {
+            name: "round".to_string(),
+            func: builtin_round,
+        },
+    );
 }
 
 fn builtin_print(args: Vec<Value>, _span: Span) -> FiveResult<Value> {
@@ -382,4 +447,190 @@ fn builtin_assert_eq(args: Vec<Value>, span: Span) -> FiveResult<Value> {
     }
 
     Ok(Value::Nil)
+}
+
+// Math functions
+
+fn builtin_abs(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("abs() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Int(n) => Ok(Value::Int(n.abs())),
+        Value::Float(n) => Ok(Value::Float(n.abs())),
+        _ => Err(FiveError::runtime(
+            format!("abs() requires a number, got {}", args[0].type_name()),
+            span,
+        )),
+    }
+}
+
+fn builtin_min(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() < 2 {
+        return Err(FiveError::runtime("min() requires at least 2 arguments", span));
+    }
+
+    let mut result = args[0].clone();
+    for arg in &args[1..] {
+        match (&result, arg) {
+            (Value::Int(a), Value::Int(b)) => {
+                if b < a {
+                    result = Value::Int(*b);
+                }
+            }
+            (Value::Float(a), Value::Float(b)) => {
+                if b < a {
+                    result = Value::Float(*b);
+                }
+            }
+            (Value::Int(a), Value::Float(b)) => {
+                let a_f = *a as f64;
+                if *b < a_f {
+                    result = Value::Float(*b);
+                } else {
+                    result = Value::Float(a_f);
+                }
+            }
+            (Value::Float(a), Value::Int(b)) => {
+                let b_f = *b as f64;
+                if b_f < *a {
+                    result = Value::Float(b_f);
+                }
+            }
+            _ => {
+                return Err(FiveError::runtime(
+                    "min() requires numeric arguments",
+                    span,
+                ))
+            }
+        }
+    }
+    Ok(result)
+}
+
+fn builtin_max(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() < 2 {
+        return Err(FiveError::runtime("max() requires at least 2 arguments", span));
+    }
+
+    let mut result = args[0].clone();
+    for arg in &args[1..] {
+        match (&result, arg) {
+            (Value::Int(a), Value::Int(b)) => {
+                if b > a {
+                    result = Value::Int(*b);
+                }
+            }
+            (Value::Float(a), Value::Float(b)) => {
+                if b > a {
+                    result = Value::Float(*b);
+                }
+            }
+            (Value::Int(a), Value::Float(b)) => {
+                let a_f = *a as f64;
+                if *b > a_f {
+                    result = Value::Float(*b);
+                } else {
+                    result = Value::Float(a_f);
+                }
+            }
+            (Value::Float(a), Value::Int(b)) => {
+                let b_f = *b as f64;
+                if b_f > *a {
+                    result = Value::Float(b_f);
+                }
+            }
+            _ => {
+                return Err(FiveError::runtime(
+                    "max() requires numeric arguments",
+                    span,
+                ))
+            }
+        }
+    }
+    Ok(result)
+}
+
+fn builtin_sqrt(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("sqrt() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Int(n) => Ok(Value::Float((*n as f64).sqrt())),
+        Value::Float(n) => Ok(Value::Float(n.sqrt())),
+        _ => Err(FiveError::runtime(
+            format!("sqrt() requires a number, got {}", args[0].type_name()),
+            span,
+        )),
+    }
+}
+
+fn builtin_pow(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 2 {
+        return Err(FiveError::runtime("pow() takes exactly 2 arguments", span));
+    }
+
+    match (&args[0], &args[1]) {
+        (Value::Int(base), Value::Int(exp)) => {
+            if *exp >= 0 {
+                Ok(Value::Int(base.pow(*exp as u32)))
+            } else {
+                Ok(Value::Float((*base as f64).powi(*exp as i32)))
+            }
+        }
+        (Value::Float(base), Value::Int(exp)) => Ok(Value::Float(base.powi(*exp as i32))),
+        (Value::Int(base), Value::Float(exp)) => Ok(Value::Float((*base as f64).powf(*exp))),
+        (Value::Float(base), Value::Float(exp)) => Ok(Value::Float(base.powf(*exp))),
+        _ => Err(FiveError::runtime(
+            "pow() requires numeric arguments",
+            span,
+        )),
+    }
+}
+
+fn builtin_floor(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("floor() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Int(n) => Ok(Value::Int(*n)),
+        Value::Float(n) => Ok(Value::Int(n.floor() as i64)),
+        _ => Err(FiveError::runtime(
+            format!("floor() requires a number, got {}", args[0].type_name()),
+            span,
+        )),
+    }
+}
+
+fn builtin_ceil(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("ceil() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Int(n) => Ok(Value::Int(*n)),
+        Value::Float(n) => Ok(Value::Int(n.ceil() as i64)),
+        _ => Err(FiveError::runtime(
+            format!("ceil() requires a number, got {}", args[0].type_name()),
+            span,
+        )),
+    }
+}
+
+fn builtin_round(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("round() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Int(n) => Ok(Value::Int(*n)),
+        Value::Float(n) => Ok(Value::Int(n.round() as i64)),
+        _ => Err(FiveError::runtime(
+            format!("round() requires a number, got {}", args[0].type_name()),
+            span,
+        )),
+    }
 }

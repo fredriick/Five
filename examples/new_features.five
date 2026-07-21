@@ -1,0 +1,48 @@
+// Test new features
+
+println("=== String Interpolation ===")
+let name = "Five"
+let version = 1
+println("Welcome to {name} v{version}!")
+
+let x = 10
+let y = 20
+println("The sum of {x} and {y} is {x + y}")
+
+println("\n=== Math Functions ===")
+println(abs(-42))
+println(min(3, 7, 1, 5))
+println(max(3, 7, 1, 5))
+println(sqrt(16))
+println(pow(2, 10))
+println(floor(3.7))
+println(ceil(3.2))
+println(round(3.5))
+
+println("\n=== String Methods ===")
+let s = "  Hello World  "
+println(s.trim())
+println(s.uppercase())
+println(s.lowercase())
+println("hello".contains("ell"))
+println("hello".starts_with("he"))
+println("hello".ends_with("lo"))
+println("hello world".replace("world", "Five"))
+println("hello".substring(1, 4))
+println("ha".repeat(3))
+println("hello".reverse())
+println("".is_empty())
+println("a,b,c".split(","))
+println(["a", "b", "c"].join("-"))
+
+println("\n=== Array Methods ===")
+let arr = [1, 2, 3, 4, 5]
+println(arr.reverse())
+println(arr.contains(3))
+println(arr.first())
+println(arr.last())
+println(arr.take(3))
+println(arr.skip(2))
+println(arr.is_empty())
+
+println("\n=== Done! ===")

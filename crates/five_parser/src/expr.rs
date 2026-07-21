@@ -384,9 +384,8 @@ impl<'src> Parser<'src> {
             TokenKind::String => {
                 self.advance()?;
                 let text = self.get_text(token.span);
-                // Remove quotes and handle escape sequences
-                let value = self.parse_string_literal(text)?;
-                Ok(Expr::literal(Literal::String(value), token.span))
+                // Check for string interpolation
+                self.parse_string_with_interpolation(text, token.span)
             }
 
             TokenKind::Char => {
@@ -991,6 +990,115 @@ impl<'src> Parser<'src> {
     /// Peek at the third token ahead (through lexer).
     fn peek_third(&mut self) -> FiveResult<five_lexer::Token> {
         Ok(self.lexer.peek_third()?.clone())
+    }
+
+    /// Parse a string with potential interpolation: "Hello {name}!"
+    fn parse_string_with_interpolation(&mut self, text: &str, span: Span) -> FiveResult<Expr> {
+        let inner = &text[1..text.len() - 1]; // Remove quotes
+
+        // Check if there's any interpolation
+        if !inner.contains('{') {
+            // No interpolation, just parse as regular string
+            let value = self.parse_string_literal(text)?;
+            return Ok(Expr::literal(Literal::String(value), span));
+        }
+
+        // Parse interpolated string into concatenation of parts
+        let mut parts: Vec<Expr> = Vec::new();
+        let mut current_str = String::new();
+        let mut chars = inner.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                // Handle escape sequences
+                match chars.next() {
+                    Some('n') => current_str.push('\n'),
+                    Some('r') => current_str.push('\r'),
+                    Some('t') => current_str.push('\t'),
+                    Some('\\') => current_str.push('\\'),
+                    Some('"') => current_str.push('"'),
+                    Some('{') => current_str.push('{'),
+                    Some('}') => current_str.push('}'),
+                    Some('0') => current_str.push('\0'),
+                    Some(other) => {
+                        current_str.push('\\');
+                        current_str.push(other);
+                    }
+                    None => current_str.push('\\'),
+                }
+            } else if c == '{' {
+                // Start of interpolation
+                // Push current string part if any
+                if !current_str.is_empty() {
+                    parts.push(Expr::literal(Literal::String(current_str.clone()), span));
+                    current_str.clear();
+                }
+
+                // Extract expression inside braces
+                let mut expr_str = String::new();
+                let mut brace_depth = 1;
+                while let Some(ec) = chars.next() {
+                    if ec == '{' {
+                        brace_depth += 1;
+                        expr_str.push(ec);
+                    } else if ec == '}' {
+                        brace_depth -= 1;
+                        if brace_depth == 0 {
+                            break;
+                        }
+                        expr_str.push(ec);
+                    } else {
+                        expr_str.push(ec);
+                    }
+                }
+
+                // Parse the expression
+                let mut inner_parser = Parser::new(&expr_str);
+                let expr = inner_parser.parse_expr()?;
+
+                // Wrap in string() call to convert to string
+                let string_call = Expr::new(
+                    ExprKind::Call {
+                        callee: Box::new(Expr::ident("string", span)),
+                        args: vec![expr],
+                    },
+                    span,
+                );
+                parts.push(string_call);
+            } else {
+                current_str.push(c);
+            }
+        }
+
+        // Push remaining string part
+        if !current_str.is_empty() {
+            parts.push(Expr::literal(Literal::String(current_str), span));
+        }
+
+        // If no parts, return empty string
+        if parts.is_empty() {
+            return Ok(Expr::literal(Literal::String(String::new()), span));
+        }
+
+        // If one part, return it directly
+        if parts.len() == 1 {
+            return Ok(parts.remove(0));
+        }
+
+        // Combine parts with + operator
+        let mut result = parts.remove(0);
+        for part in parts {
+            result = Expr::new(
+                ExprKind::Binary {
+                    left: Box::new(result),
+                    op: BinaryOp::Add,
+                    right: Box::new(part),
+                },
+                span,
+            );
+        }
+
+        Ok(result)
     }
 
     /// Parse a string literal, handling escape sequences.
