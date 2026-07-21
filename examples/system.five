@@ -1,0 +1,41 @@
+// Test system features
+
+println("=== Random Numbers ===")
+println(random())
+println(random())
+println(random_int(100))
+println(random_int(1, 10))
+
+println("\n=== Time ===")
+let start = time()
+println("Current timestamp: {start}")
+
+println("\n=== Environment ===")
+let home = env("HOME")
+if home != nil {
+    println("HOME: {home}")
+} else {
+    println("HOME not set")
+}
+
+println("\n=== File I/O ===")
+let test_file = "/tmp/five_test.txt"
+write_file(test_file, "Hello from Five!")
+println("Wrote to {test_file}")
+
+if file_exists(test_file) {
+    let contents = read_file(test_file)
+    println("Read back: {contents}")
+}
+
+println("\n=== Timing Example ===")
+let t1 = time()
+let mut sum = 0
+for i in 1..1000 {
+    sum += i
+}
+let t2 = time()
+println("Sum of 1..999 = {sum}")
+println("Time taken: {t2 - t1} seconds")
+
+println("\n=== Done! ===")

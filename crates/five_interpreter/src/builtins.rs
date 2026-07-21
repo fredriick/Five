@@ -191,6 +191,90 @@ pub fn register_builtins(env: &Rc<RefCell<Environment>>) {
             func: builtin_round,
         },
     );
+
+    // Random functions
+    env.define(
+        "random".to_string(),
+        Value::BuiltinFunction {
+            name: "random".to_string(),
+            func: builtin_random,
+        },
+    );
+
+    env.define(
+        "random_int".to_string(),
+        Value::BuiltinFunction {
+            name: "random_int".to_string(),
+            func: builtin_random_int,
+        },
+    );
+
+    // File I/O
+    env.define(
+        "read_file".to_string(),
+        Value::BuiltinFunction {
+            name: "read_file".to_string(),
+            func: builtin_read_file,
+        },
+    );
+
+    env.define(
+        "write_file".to_string(),
+        Value::BuiltinFunction {
+            name: "write_file".to_string(),
+            func: builtin_write_file,
+        },
+    );
+
+    env.define(
+        "file_exists".to_string(),
+        Value::BuiltinFunction {
+            name: "file_exists".to_string(),
+            func: builtin_file_exists,
+        },
+    );
+
+    // System functions
+    env.define(
+        "env".to_string(),
+        Value::BuiltinFunction {
+            name: "env".to_string(),
+            func: builtin_env,
+        },
+    );
+
+    env.define(
+        "sleep".to_string(),
+        Value::BuiltinFunction {
+            name: "sleep".to_string(),
+            func: builtin_sleep,
+        },
+    );
+
+    env.define(
+        "exit".to_string(),
+        Value::BuiltinFunction {
+            name: "exit".to_string(),
+            func: builtin_exit,
+        },
+    );
+
+    env.define(
+        "time".to_string(),
+        Value::BuiltinFunction {
+            name: "time".to_string(),
+            func: builtin_time,
+        },
+    );
+
+    // Error handling
+    env.define(
+        "panic".to_string(),
+        Value::BuiltinFunction {
+            name: "panic".to_string(),
+            func: builtin_panic,
+        },
+    );
 }
 
 fn builtin_print(args: Vec<Value>, _span: Span) -> FiveResult<Value> {
@@ -633,4 +717,156 @@ fn builtin_round(args: Vec<Value>, span: Span) -> FiveResult<Value> {
             span,
         )),
     }
+}
+
+// Random functions
+
+fn builtin_random(_args: Vec<Value>, _span: Span) -> FiveResult<Value> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    // Simple PRNG using time-based seed
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let random_val = ((seed as u64).wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407)) as f64
+        / u64::MAX as f64;
+    Ok(Value::Float(random_val))
+}
+
+fn builtin_random_int(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let (min, max) = match args.len() {
+        0 => (0i64, i64::MAX),
+        1 => {
+            if let Value::Int(max) = &args[0] {
+                (0, *max)
+            } else {
+                return Err(FiveError::runtime("random_int() requires integer arguments", span));
+            }
+        }
+        2 => {
+            if let (Value::Int(min), Value::Int(max)) = (&args[0], &args[1]) {
+                (*min, *max)
+            } else {
+                return Err(FiveError::runtime("random_int() requires integer arguments", span));
+            }
+        }
+        _ => return Err(FiveError::runtime("random_int() takes 0, 1, or 2 arguments", span)),
+    };
+
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let random_val = (seed as u64).wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+    let range = (max - min) as u64;
+    let result = if range > 0 {
+        min + (random_val % range) as i64
+    } else {
+        min
+    };
+    Ok(Value::Int(result))
+}
+
+// File I/O
+
+fn builtin_read_file(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("read_file() takes exactly 1 argument", span));
+    }
+
+    if let Value::String(path) = &args[0] {
+        match std::fs::read_to_string(path) {
+            Ok(contents) => Ok(Value::String(contents)),
+            Err(e) => Err(FiveError::runtime(format!("Failed to read file: {}", e), span)),
+        }
+    } else {
+        Err(FiveError::runtime("read_file() requires a string path", span))
+    }
+}
+
+fn builtin_write_file(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 2 {
+        return Err(FiveError::runtime("write_file() takes exactly 2 arguments", span));
+    }
+
+    if let (Value::String(path), Value::String(contents)) = (&args[0], &args[1]) {
+        match std::fs::write(path, contents) {
+            Ok(()) => Ok(Value::Bool(true)),
+            Err(e) => Err(FiveError::runtime(format!("Failed to write file: {}", e), span)),
+        }
+    } else {
+        Err(FiveError::runtime("write_file() requires (string, string) arguments", span))
+    }
+}
+
+fn builtin_file_exists(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("file_exists() takes exactly 1 argument", span));
+    }
+
+    if let Value::String(path) = &args[0] {
+        Ok(Value::Bool(std::path::Path::new(path).exists()))
+    } else {
+        Err(FiveError::runtime("file_exists() requires a string path", span))
+    }
+}
+
+// System functions
+
+fn builtin_env(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("env() takes exactly 1 argument", span));
+    }
+
+    if let Value::String(name) = &args[0] {
+        match std::env::var(name) {
+            Ok(value) => Ok(Value::String(value)),
+            Err(_) => Ok(Value::Nil),
+        }
+    } else {
+        Err(FiveError::runtime("env() requires a string argument", span))
+    }
+}
+
+fn builtin_sleep(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("sleep() takes exactly 1 argument", span));
+    }
+
+    let millis = match &args[0] {
+        Value::Int(n) => *n as u64,
+        Value::Float(n) => (*n * 1000.0) as u64,
+        _ => return Err(FiveError::runtime("sleep() requires a number (seconds)", span)),
+    };
+
+    std::thread::sleep(std::time::Duration::from_millis(millis));
+    Ok(Value::Nil)
+}
+
+fn builtin_exit(args: Vec<Value>, _span: Span) -> FiveResult<Value> {
+    let code = if let Some(Value::Int(n)) = args.first() {
+        *n as i32
+    } else {
+        0
+    };
+    std::process::exit(code);
+}
+
+fn builtin_time(_args: Vec<Value>, _span: Span) -> FiveResult<Value> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap();
+    Ok(Value::Float(now.as_secs_f64()))
+}
+
+fn builtin_panic(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    let message = if let Some(arg) = args.first() {
+        format!("{}", arg)
+    } else {
+        "panic!".to_string()
+    };
+    Err(FiveError::runtime(format!("Panic: {}", message), span))
 }
