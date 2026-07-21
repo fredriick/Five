@@ -275,6 +275,88 @@ pub fn register_builtins(env: &Rc<RefCell<Environment>>) {
             func: builtin_panic,
         },
     );
+
+    // Map/Dictionary functions
+    env.define(
+        "map".to_string(),
+        Value::BuiltinFunction {
+            name: "map".to_string(),
+            func: builtin_map_new,
+        },
+    );
+
+    env.define(
+        "keys".to_string(),
+        Value::BuiltinFunction {
+            name: "keys".to_string(),
+            func: builtin_keys,
+        },
+    );
+
+    env.define(
+        "values".to_string(),
+        Value::BuiltinFunction {
+            name: "values".to_string(),
+            func: builtin_values,
+        },
+    );
+
+    env.define(
+        "has_key".to_string(),
+        Value::BuiltinFunction {
+            name: "has_key".to_string(),
+            func: builtin_has_key,
+        },
+    );
+
+    env.define(
+        "get".to_string(),
+        Value::BuiltinFunction {
+            name: "get".to_string(),
+            func: builtin_get,
+        },
+    );
+
+    env.define(
+        "set".to_string(),
+        Value::BuiltinFunction {
+            name: "set".to_string(),
+            func: builtin_set,
+        },
+    );
+
+    // Functional helpers
+    env.define(
+        "zip".to_string(),
+        Value::BuiltinFunction {
+            name: "zip".to_string(),
+            func: builtin_zip,
+        },
+    );
+
+    env.define(
+        "enumerate".to_string(),
+        Value::BuiltinFunction {
+            name: "enumerate".to_string(),
+            func: builtin_enumerate,
+        },
+    );
+
+    env.define(
+        "sort".to_string(),
+        Value::BuiltinFunction {
+            name: "sort".to_string(),
+            func: builtin_sort,
+        },
+    );
+
+    env.define(
+        "flatten".to_string(),
+        Value::BuiltinFunction {
+            name: "flatten".to_string(),
+            func: builtin_flatten,
+        },
+    );
 }
 
 fn builtin_print(args: Vec<Value>, _span: Span) -> FiveResult<Value> {
@@ -869,4 +951,198 @@ fn builtin_panic(args: Vec<Value>, span: Span) -> FiveResult<Value> {
         "panic!".to_string()
     };
     Err(FiveError::runtime(format!("Panic: {}", message), span))
+}
+
+// Map/Dictionary functions
+
+fn builtin_map_new(_args: Vec<Value>, _span: Span) -> FiveResult<Value> {
+    Ok(Value::Map(Vec::new()))
+}
+
+fn builtin_keys(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("keys() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Map(entries) => {
+            Ok(Value::Array(entries.iter().map(|(k, _)| k.clone()).collect()))
+        }
+        Value::Struct { fields, .. } => {
+            Ok(Value::Array(fields.keys().map(|k| Value::String(k.clone())).collect()))
+        }
+        _ => Err(FiveError::runtime("keys() requires a map or struct", span)),
+    }
+}
+
+fn builtin_values(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("values() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Map(entries) => {
+            Ok(Value::Array(entries.iter().map(|(_, v)| v.clone()).collect()))
+        }
+        Value::Struct { fields, .. } => {
+            Ok(Value::Array(fields.values().cloned().collect()))
+        }
+        _ => Err(FiveError::runtime("values() requires a map or struct", span)),
+    }
+}
+
+fn builtin_has_key(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 2 {
+        return Err(FiveError::runtime("has_key() takes exactly 2 arguments", span));
+    }
+
+    match &args[0] {
+        Value::Map(entries) => {
+            let key = &args[1];
+            Ok(Value::Bool(entries.iter().any(|(k, _)| k == key)))
+        }
+        Value::Struct { fields, .. } => {
+            if let Value::String(key) = &args[1] {
+                Ok(Value::Bool(fields.contains_key(key)))
+            } else {
+                Err(FiveError::runtime("struct key must be a string", span))
+            }
+        }
+        _ => Err(FiveError::runtime("has_key() requires a map or struct as first argument", span)),
+    }
+}
+
+fn builtin_get(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() < 2 || args.len() > 3 {
+        return Err(FiveError::runtime("get() takes 2 or 3 arguments", span));
+    }
+
+    let default = if args.len() == 3 {
+        args[2].clone()
+    } else {
+        Value::Nil
+    };
+
+    match &args[0] {
+        Value::Map(entries) => {
+            let key = &args[1];
+            Ok(entries.iter()
+                .find(|(k, _)| k == key)
+                .map(|(_, v)| v.clone())
+                .unwrap_or(default))
+        }
+        Value::Struct { fields, .. } => {
+            if let Value::String(key) = &args[1] {
+                Ok(fields.get(key).cloned().unwrap_or(default))
+            } else {
+                Err(FiveError::runtime("struct key must be a string", span))
+            }
+        }
+        Value::Array(arr) => {
+            if let Value::Int(idx) = &args[1] {
+                Ok(arr.get(*idx as usize).cloned().unwrap_or(default))
+            } else {
+                Err(FiveError::runtime("array index must be an integer", span))
+            }
+        }
+        _ => Err(FiveError::runtime("get() requires a map, struct, or array", span)),
+    }
+}
+
+fn builtin_set(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 3 {
+        return Err(FiveError::runtime("set() takes exactly 3 arguments", span));
+    }
+
+    match &args[0] {
+        Value::Map(entries) => {
+            let key = args[1].clone();
+            let value = args[2].clone();
+            let mut new_entries: Vec<(Value, Value)> = entries.iter()
+                .filter(|(k, _)| k != &key)
+                .cloned()
+                .collect();
+            new_entries.push((key, value));
+            Ok(Value::Map(new_entries))
+        }
+        _ => Err(FiveError::runtime("set() requires a map as first argument", span)),
+    }
+}
+
+// Functional helpers
+
+fn builtin_zip(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 2 {
+        return Err(FiveError::runtime("zip() takes exactly 2 arguments", span));
+    }
+
+    match (&args[0], &args[1]) {
+        (Value::Array(a), Value::Array(b)) => {
+            let result: Vec<Value> = a.iter()
+                .zip(b.iter())
+                .map(|(x, y)| Value::Tuple(vec![x.clone(), y.clone()]))
+                .collect();
+            Ok(Value::Array(result))
+        }
+        _ => Err(FiveError::runtime("zip() requires two arrays", span)),
+    }
+}
+
+fn builtin_enumerate(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("enumerate() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Array(arr) => {
+            let result: Vec<Value> = arr.iter()
+                .enumerate()
+                .map(|(i, v)| Value::Tuple(vec![Value::Int(i as i64), v.clone()]))
+                .collect();
+            Ok(Value::Array(result))
+        }
+        _ => Err(FiveError::runtime("enumerate() requires an array", span)),
+    }
+}
+
+fn builtin_sort(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("sort() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Array(arr) => {
+            let mut sorted = arr.clone();
+            sorted.sort_by(|a, b| {
+                match (a, b) {
+                    (Value::Int(x), Value::Int(y)) => x.cmp(y),
+                    (Value::Float(x), Value::Float(y)) => x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal),
+                    (Value::String(x), Value::String(y)) => x.cmp(y),
+                    _ => std::cmp::Ordering::Equal,
+                }
+            });
+            Ok(Value::Array(sorted))
+        }
+        _ => Err(FiveError::runtime("sort() requires an array", span)),
+    }
+}
+
+fn builtin_flatten(args: Vec<Value>, span: Span) -> FiveResult<Value> {
+    if args.len() != 1 {
+        return Err(FiveError::runtime("flatten() takes exactly 1 argument", span));
+    }
+
+    match &args[0] {
+        Value::Array(arr) => {
+            let mut result = Vec::new();
+            for item in arr {
+                match item {
+                    Value::Array(inner) => result.extend(inner.clone()),
+                    other => result.push(other.clone()),
+                }
+            }
+            Ok(Value::Array(result))
+        }
+        _ => Err(FiveError::runtime("flatten() requires an array", span)),
+    }
 }

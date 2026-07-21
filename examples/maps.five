@@ -1,0 +1,46 @@
+// Test Map and functional helpers
+
+println("=== Map/Dictionary ===")
+let m = map()
+println(m)
+
+let m2 = set(m, "name", "Five")
+let m3 = set(m2, "version", 1)
+println(m3)
+
+println(get(m3, "name"))
+println(get(m3, "missing", "default"))
+println(has_key(m3, "name"))
+println(has_key(m3, "foo"))
+
+println(keys(m3))
+println(values(m3))
+
+println("\n=== Struct keys/values ===")
+struct Person {
+    name: String,
+    age: Int
+}
+let p = Person { name: "Alice", age: 30 }
+println(keys(p))
+println(values(p))
+
+println("\n=== Functional Helpers ===")
+let a = [1, 2, 3]
+let b = ["a", "b", "c"]
+println(zip(a, b))
+
+println(enumerate(["x", "y", "z"]))
+
+let nums = [3, 1, 4, 1, 5, 9, 2, 6]
+println(sort(nums))
+
+let nested = [[1, 2], [3, 4], [5]]
+println(flatten(nested))
+
+println("\n=== get() with arrays ===")
+let arr = [10, 20, 30]
+println(get(arr, 1))
+println(get(arr, 10, -1))
+
+println("\n=== Done! ===")

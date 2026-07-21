@@ -28,6 +28,8 @@ pub enum Value {
     Array(Vec<Value>),
     /// Tuple value
     Tuple(Vec<Value>),
+    /// Map/Dictionary value
+    Map(Vec<(Value, Value)>),
     /// Range value
     Range {
         start: i64,
@@ -92,6 +94,7 @@ impl Value {
             Self::Nil => "Nil",
             Self::Array(_) => "Array",
             Self::Tuple(_) => "Tuple",
+            Self::Map(_) => "Map",
             Self::Range { .. } => "Range",
             Self::Function { .. } => "Function",
             Self::BuiltinFunction { .. } => "BuiltinFunction",
@@ -116,6 +119,7 @@ impl Value {
             Self::Float(n) => *n != 0.0,
             Self::String(s) => !s.is_empty(),
             Self::Array(arr) => !arr.is_empty(),
+            Self::Map(m) => !m.is_empty(),
             _ => true,
         }
     }
@@ -132,6 +136,7 @@ impl PartialEq for Value {
             (Self::Nil, Self::Nil) => true,
             (Self::Array(a), Self::Array(b)) => a == b,
             (Self::Tuple(a), Self::Tuple(b)) => a == b,
+            (Self::Map(a), Self::Map(b)) => a == b,
             (
                 Self::DataVariant {
                     type_name: tn1,
@@ -179,6 +184,16 @@ impl fmt::Debug for Value {
                     write!(f, "{:?}", v)?;
                 }
                 write!(f, ")")
+            }
+            Self::Map(entries) => {
+                write!(f, "{{")?;
+                for (i, (k, v)) in entries.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{:?}: {:?}", k, v)?;
+                }
+                write!(f, "}}")
             }
             Self::Range {
                 start,
@@ -269,6 +284,16 @@ impl fmt::Display for Value {
                     write!(f, "{}", v)?;
                 }
                 write!(f, ")")
+            }
+            Self::Map(entries) => {
+                write!(f, "{{")?;
+                for (i, (k, v)) in entries.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}: {}", k, v)?;
+                }
+                write!(f, "}}")
             }
             Self::DataVariant {
                 variant, values, ..
